@@ -1,6 +1,6 @@
 ---
 layout: runbook
-title: '#4471 split · three problems, not one'
+title: '#4471 split · two problems, not one'
 owner: support desk
 status: living
 reviewed: 2026-10-29
@@ -13,24 +13,24 @@ signature: v1.eyJzdWIiOiIyMjQyIiwiYXVkIjoiY2hhbGxlbmdlOndoYXQtaXQtc2hvd3MiLCJpYX
   import RenderStamp from '#lib/kb/RenderStamp.svelte';
 
   const repo = 'https://github.com/nbamford123/support-kb/issues';
-  const issues = { parser: `${repo}/1`, hint: `${repo}/2`, 'one-day': `${repo}/3` };
+  const issues = { parser: `${repo}/1`, hint: `${repo}/2` };
 </script>
 
 [#4471](/kb/incidents/4471) was merged as one issue: dates parse month first in EU locales. Its
-reports hold three problems. Each now has its own ticket.
+reports hold two problems. Each now has its own ticket.
 
 <ProblemTable ticket={4471} {issues} />
 
 <Callout kind="warn">
-One fix for the parser will not close this. The hint reports come from a form bug, and the
-one-day reports are not a day/month swap at all.
+One fix for the parser will not close this. The hint reports come from a form bug in booking-v3,
+not from the parser.
 </Callout>
 
-## The three problems
+## The two problems
 
 **parser.** The shared parser reads every date month first. Our tenants all write the day first,
-so 7 June arrives as 6 July. Apart from the one-day reports, every report from the app or email, and
-every form report from a booking-v2 tenant, is this.
+so 7 June arrives as 6 July. Every report from the app or email, and every form report from a
+booking-v2 tenant, is this.
 A swap can only happen when the day is 12 or less, so most dates still parse right.
 
 **hint.** booking-v3 prints `MM/DD/YYYY` under its date field. People type what the hint says, month
@@ -38,26 +38,24 @@ first, and the form reads it the tenant's way, day first. The swap looks the sam
 but the fix is in the form, not the parser. Only form reports from booking-v3 tenants
 (alder.physio, copper.studio, pale.harbour) are this.
 
-**one-day.** The date moves one day earlier, not swapped: Tuesday 12 May shows as Monday 11 May,
-"every booking in June is one day off", one client in Lisbon got Tuesday and one in Toronto got
-Monday for the same meeting, and one invite arrived before the booking was made. That points to a
-time zone conversion, not date order. These are the reports in `desk-notes.json` (`oneDayMove`).
-The desk read them right but still counted them under the parser.
+**Read as a one-day move.** The desk read five parser reports as a date one day early, not swapped
+(`desk-notes.json`, `oneDayMove`). By tenant and channel they are parser reports, so they are
+counted there and footnoted under the table.
 
 ## Why they were merged
 
 [Decision 0001](/kb/decisions/0001-dedupe-by-subject) merges reports whose subject lines match.
-All three problems produce the same subjects ("Wrong day on the invite", "Date is wrong"), so
+Both problems produce the same subjects ("Wrong day on the invite", "Date is wrong"), so
 subject matching put them in one ticket. Intake's tag does not help either: it is a guess from the
 browser and disagrees with the tenant's cause for 38 reports. Tell the problems apart by tenant,
-form and channel (`causes.ts`), and read the body before you merge a report that is not a swap.
+form and channel (`causes.ts`).
 
 ## How the counts were made
 
 - Source: `reports-4471.json` from the ticket system. It has 427 rows; 15 are the same report twice
   from overlapping export pages. One id is one report.
 - Cause by tenant locale, booking form and channel (`causes.ts`), not by intake tag.
-- One-day reports by id from `desk-notes.json`. Reading all 412 bodies agrees: 403 describe a
-  day/month swap, these 5 are the only other date complaints, and the remaining 4 name no dates.
+- Reports the desk read as a one-day move (`desk-notes.json`) stay with their cause and are footnoted.
+  Of the 412 bodies, 403 describe a day/month swap, 5 are those one-day reads, and 4 name no dates.
 
 <RenderStamp {signature} />

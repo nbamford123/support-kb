@@ -16,7 +16,7 @@ const tenants = new Map(
   fs.readdirSync('src/lib/data/tenants').map((f) => read(path.join('src/lib/data/tenants', f))).map((t) => [t.handle, t]),
 );
 
-// Same rules as causes.ts and split.ts.
+// Same rules as causes.ts.
 const dayFirst = (locale) => {
   const order = new Intl.DateTimeFormat(locale, { year: 'numeric', month: '2-digit', day: '2-digit' })
     .formatToParts(new Date(Date.UTC(2026, 0, 2, 12)))
@@ -24,7 +24,7 @@ const dayFirst = (locale) => {
   return order.indexOf('day') < order.indexOf('month');
 };
 const causeOf = (r, t) => (!t || !dayFirst(t.locale) ? null : r.channel === 'form' && t.form === 'booking-v3' ? 'hint' : 'parser');
-const problemOf = (r) => (notes.oneDayMove.includes(r.id) ? 'one-day' : causeOf(r, tenants.get(r.tenant)) ?? 'unplaced');
+const problemOf = (r) => causeOf(r, tenants.get(r.tenant)) ?? 'unplaced';
 
 // Same as desk-ref.ts.
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -59,13 +59,14 @@ const repo = body.match(/const repo = '([^']+)'/)?.[1];
 
 function problemTable(ticket) {
   const merged = [...new Map(reports.map((r) => [r.id, r])).values()].filter((r) => r.mergedInto === ticket);
-  const groups = ['parser', 'hint', 'one-day', 'unplaced']
+  const groups = ['parser', 'hint', 'unplaced']
     .map((problem) => {
       const rs = merged.filter((r) => problemOf(r) === problem);
       const days = rs.map((r) => r.receivedAt.slice(0, 10)).sort();
-      return { problem, n: rs.length, tenants: new Set(rs.map((r) => r.tenant)).size, first: days[0], last: days.at(-1) };
+      return { problem, n: rs.length, moved: rs.filter((r) => notes.oneDayMove.includes(r.id)).length, tenants: new Set(rs.map((r) => r.tenant)).size, first: days[0], last: days.at(-1) };
     })
-    .filter((g) => g.n);
+    .filter((g) => g.n)
+    .sort((a, b) => b.n - a.n);
   const sum = groups.reduce((n, g) => n + g.n, 0);
   const rows = groups
     .map((g) => {
@@ -78,7 +79,11 @@ function problemTable(ticket) {
   }</p>
 <table><thead><tr><th>problem</th><th>reports</th><th>tenants</th><th>seen</th><th>ticket</th></tr></thead><tbody>
 ${rows}
-</tbody></table>`;
+</tbody></table>
+${groups
+    .filter((g) => g.moved)
+    .map((g) => `<p class="note">${g.moved} of the ${g.problem} reports read as a one-day move; filed under <code>${g.problem}</code> by tenant.</p>`)
+    .join('\n')}`;
 }
 
 const html = [];
@@ -113,6 +118,7 @@ const page = `<!doctype html>
 <title>${esc(meta.title)} · support kb</title>
 <style>${css}
 .sum { font-size: 1.1rem; }
+.note { color: var(--muted); font-size: 0.85em; }
 aside { border-left: 4px solid var(--accent); padding: 0.5rem 1rem; margin: 1rem 0; background: var(--note-bg); }
 aside.warn { border-color: var(--warn); background: var(--warn-bg); }
 .stamp { margin: 2rem 0 0; font: 0.85rem var(--mono); color: var(--muted); }
