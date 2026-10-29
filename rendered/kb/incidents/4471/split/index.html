@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#4471 split · three problems, not one · support kb</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #e3e0d8;
+    --accent: #2f6f5e; --warn: #b4501f; --warn-bg: #fbeee6; --note-bg: #eef5f2;
+    --mono: ui-monospace, 'Cascadia Code', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171716; --fg: #ecebe6; --muted: #9c9a93; --line: #34332f;
+      --accent: #6fbfa6; --warn: #f0905d; --warn-bg: #3a2418; --note-bg: #1d2c27;
+    }
+  }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+  .kb table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.92rem; }
+  .kb th, .kb td { border-bottom: 1px solid var(--line); padding: 0.35rem 0.5rem; text-align: left; }
+  .kb code { font-family: var(--mono); font-size: 0.88em; }
+  .kb a { color: var(--accent); }
+  .kb { max-width: 760px; margin: 0 auto; padding: 2rem 16px 4rem; }
+  .crumb { font: 0.8rem var(--mono); text-decoration: none; color: var(--muted); }
+  h1 { margin: 0.25rem 0 0.5rem; line-height: 1.2; }
+  .meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; color: var(--muted); font-size: 0.85rem; margin: 0; }
+  .status { border: 1px solid var(--line); border-radius: 99px; padding: 0 0.6rem; }
+  .stale { color: var(--warn); font-weight: 600; }
+  .banner { background: var(--warn-bg); color: var(--warn); padding: 0.6rem 1rem; border-radius: 6px; }
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+
+.sum { font-size: 1.1rem; }
+aside { border-left: 4px solid var(--accent); padding: 0.5rem 1rem; margin: 1rem 0; background: var(--note-bg); }
+aside.warn { border-color: var(--warn); background: var(--warn-bg); }
+.stamp { margin: 2rem 0 0; font: 0.85rem var(--mono); color: var(--muted); }
+.stamp b { color: var(--accent); letter-spacing: 0.04em; }
+.missing { color: var(--warn); }
+</style>
+</head>
+<body>
+<div class="kb">
+  <header>
+    <a class="crumb" href="/kb">support desk · kb</a>
+    <h1>#4471 split · three problems, not one</h1>
+    <p class="meta"><span>owner <b>support desk</b></span><span class="status living">living</span><span>reviewed 2026-10-29 · 0 days ago</span></p>
+  </header>
+  <main>
+<p><a href="/kb/incidents/4471">#4471</a> was merged as one issue: dates parse month first in EU locales. Its reports hold three problems. Each now has its own ticket.</p>
+<p class="sum"><strong>412</strong> reports merged into #4471 · <strong>3</strong> problems · every report counted once</p>
+<table><thead><tr><th>problem</th><th>reports</th><th>tenants</th><th>seen</th><th>ticket</th></tr></thead><tbody>
+<tr><td><code>parser</code></td><td>374</td><td>11</td><td>2026-04-01 → 2026-10-04</td><td><a href="https://github.com/nbamford123/support-kb/issues/1">#1</a></td></tr>
+<tr><td><code>hint</code></td><td>33</td><td>3</td><td>2026-04-17 → 2026-09-22</td><td><a href="https://github.com/nbamford123/support-kb/issues/2">#2</a></td></tr>
+<tr><td><code>one-day</code></td><td>5</td><td>5</td><td>2026-04-02 → 2026-10-04</td><td><a href="https://github.com/nbamford123/support-kb/issues/3">#3</a></td></tr>
+</tbody></table>
+<aside class="warn">One fix for the parser will not close this. The hint reports come from a form bug, and the one-day reports are not a day/month swap at all.</aside>
+<h2>The three problems</h2>
+<p><strong>parser.</strong> The shared parser reads every date month first. Our tenants all write the day first, so 7 June arrives as 6 July. Apart from the one-day reports, every report from the app or email, and every form report from a booking-v2 tenant, is this. A swap can only happen when the day is 12 or less, so most dates still parse right.</p>
+<p><strong>hint.</strong> booking-v3 prints <code>MM/DD/YYYY</code> under its date field. People type what the hint says, month first, and the form reads it the tenant's way, day first. The swap looks the same as the parser's, but the fix is in the form, not the parser. Only form reports from booking-v3 tenants (alder.physio, copper.studio, pale.harbour) are this.</p>
+<p><strong>one-day.</strong> The date moves one day earlier, not swapped: Tuesday 12 May shows as Monday 11 May, "every booking in June is one day off", one client in Lisbon got Tuesday and one in Toronto got Monday for the same meeting, and one invite arrived before the booking was made. That points to a time zone conversion, not date order. These are the reports in <code>desk-notes.json</code> (<code>oneDayMove</code>). The desk read them right but still counted them under the parser.</p>
+<h2>Why they were merged</h2>
+<p><a href="/kb/decisions/0001-dedupe-by-subject">Decision 0001</a> merges reports whose subject lines match. All three problems produce the same subjects ("Wrong day on the invite", "Date is wrong"), so subject matching put them in one ticket. Intake's tag does not help either: it is a guess from the browser and disagrees with the tenant's cause for 38 reports. Tell the problems apart by tenant, form and channel (<code>causes.ts</code>), and read the body before you merge a report that is not a swap.</p>
+<h2>How the counts were made</h2>
+<ul><li>Source: <code>reports-4471.json</code> from the ticket system. It has 427 rows; 15 are the same report twice from overlapping export pages. One id is one report.</li><li>Cause by tenant locale, booking form and channel (<code>causes.ts</code>), not by intake tag.</li><li>One-day reports by id from <code>desk-notes.json</code>. Reading all 412 bodies agrees: 403 describe a day/month swap, these 5 are the only other date complaints, and the remaining 4 name no dates.</li></ul>
+<p class="stamp">desk ref <b>DR-4ABQ-4H10</b></p>
+  </main>
+  <footer>Pages are written by people. Tables and charts are built from data at render time.</footer>
+</div>
+</body>
+</html>
